@@ -162,6 +162,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="error-area" style="color: red;"></div>
                     <form class="forms-sample" method="post">
                         <div class="row">
                             <div class="form-group col-6">
@@ -273,7 +274,6 @@
                     $.each(data, (index, item) => {
                         const str = renderCustomer(item)
                         $('#tblCustomer tbody').prepend(str)
-
                     })
 
                     handleAddEventShowModalUpdate();
@@ -420,7 +420,8 @@
                     'content-type': 'application/json'
                 },
                 type: 'PATCH',
-                url: 'http://localhost:3300/customers/' + customerId,
+                url: 'http://localhost:9000/api/customers/' + customerId,
+                // url: 'http://localhost:3300/customers/' + customerId,
                 data: JSON.stringify(obj)
             })
                 .done((data) => {
@@ -428,8 +429,18 @@
                     $('#tr_' + customerId).replaceWith(str)
                     $('#modalUpdate').modal('hide')
                 })
-                .fail((error) => {
-                    console.log(error);
+                .fail((jqXHR) => {
+                    const responseJSON = jqXHR.responseJSON
+
+                    let str = '<ul>'
+                    $.each(responseJSON, (k, v) => {
+                        str += `<li>${v}</li>`
+                    })
+
+                    str += '</ul>'
+
+
+                    $('.error-area').empty().append(str);
                 })
         }
 
