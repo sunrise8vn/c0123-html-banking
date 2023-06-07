@@ -7,9 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>List of customers</title>
     <link rel="stylesheet" href="./assets/bootstrap/v-5.3.0/css/bootstrap.min.css">
-    <link rel="stylesheet" href="./assets//fontawesome/v-5.15.4/css/all.min.css">
-    <script src="./assets/bootstrap/v-5.3.0/js/bootstrap.bundle.min.js"></script>
-
+    <link rel="stylesheet" href="./assets/fontawesome/v-5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="./assets/sweetalert2/sweetalert2.min.css">
     <link rel="stylesheet" href="./assets/css/style.css">
 </head>
 
@@ -147,11 +146,60 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" id="btnCreate" class="btn btn-primary">Create</button>
+                    <button type="button" id="btnCreate" class="btn btn-outline-primary">Create</button>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Modal update -->
+    <div class="modal fade" id="modalUpdate" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5">Modal update customer</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form class="forms-sample" method="post">
+                        <div class="row">
+                            <div class="form-group col-6">
+                                <label for="title">Full Name</label>
+                                <input type="text" class="form-control" id="fullNameUp" name="fullNameUp"
+                                    placeholder="Enter title">
+                            </div>
+                            <div class="form-group col-6">
+                                <label for="price">Email</label>
+                                <input type="email" class="form-control" id="emailUp" name="emailUp"
+                                    placeholder="Enter price">
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="form-group col-6">
+                                <label for="summary">Phone</label>
+                                <input type="tel" class="form-control" id="phoneUp" name="phoneUp"
+                                    placeholder="Enter summary">
+                            </div>
+                            <div class="form-group col-6">
+                                <label for="description">Address</label>
+                                <input type="text" class="form-control" id="addressUp" name="addressUp"
+                                    placeholder="Enter description">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" id="btnUpdate" class="btn btn-outline-secondary">Update</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./assets/jquery/jquery-3.7.0.min.js"></script>
+    <script src="./assets/bootstrap/v-5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="./assets/sweetalert2/sweetalert2.all.min.js"></script>
 
     <script>
 
@@ -175,11 +223,12 @@
             },
         ]
 
-        console.log(customers);
+        let customerId = 0;
+        // let customer = null
 
         const renderCustomer = (obj) => {
             return `
-                <tr>
+                <tr id="tr_${obj.id}">
                     <th scope="row">${obj.id}</th>
                     <td>${obj.fullName}</td>
                     <td>${obj.email}</td>
@@ -187,7 +236,13 @@
                     <td>${obj.balance}</td>
                     <td>${obj.address}</td>
                     <td class="text-center">
-                        <button class="btn btn-outline-secondary">
+                        <button class="btn btn-outline-secondary edit" 
+                            data-id="${obj.id}"
+                            data-full-name="${obj.fullName}"
+                            data-email="${obj.email}"
+                            data-phone="${obj.phone}"
+                            data-address="${obj.address}"
+                        >
                             <i class="fa fa-pencil-alt"></i>
                         </button>
                         <button class="btn btn-outline-success">
@@ -199,7 +254,9 @@
                         <button class="btn btn-outline-primary">
                             <i class="fas fa-exchange-alt"></i>
                         </button>
-                        <button class="btn btn-outline-danger">
+                        <button class="btn btn-outline-danger delete"
+                            data-id="${obj.id}"
+                        >
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </td>
@@ -208,39 +265,199 @@
         }
 
         const getAllCustomers = () => {
-            customers.forEach(item => {
-                const str = renderCustomer(item)
-
-                document.querySelector('#tblCustomer tbody').innerHTML += str
+            $.ajax({
+                type: 'GET',
+                url: 'http://localhost:3300/customers?deleted=false'
             })
+                .done((data) => {
+                    $.each(data, (index, item) => {
+                        const str = renderCustomer(item)
+                        $('#tblCustomer tbody').prepend(str)
+
+                    })
+
+                    handleAddEventShowModalUpdate();
+                    handleAddEventConfirmDelete();
+                })
+                .fail((error) => {
+                    console.log(error);
+                })
         }
 
         getAllCustomers();
 
-
-        const btnCreate = document.getElementById('btnCreate')
-        btnCreate.addEventListener('click', () => {
-            const fullName = document.getElementById('fullNameCre').value
-            const email = document.getElementById('emailCre').value
-            const phone = document.getElementById('phoneCre').value
-            const address = document.getElementById('addressCre').value
+        $('#btnCreate').on('click', () => {
+            const fullName = $('#fullNameCre').val()
+            const email = $('#emailCre').val()
+            const phone = $('#phoneCre').val()
+            const address = $('#addressCre').val()
             const balance = 0
+            const deleted = false
 
             const obj = {
-                id: id++,
-                fullName: fullName,
-                email: email,
-                phone: phone,
-                balance: balance,
-                address: address
+                fullName,
+                email,
+                phone,
+                balance,
+                address,
+                deleted
             }
 
-            customers.push(obj)
+            $.ajax({
+                type: 'POST',
+                url: 'http://localhost:3300/customers',
+                data: obj
+            })
+                .done((data) => {
+                    const str = renderCustomer(data)
+                    $('#tblCustomer tbody').prepend(str)
 
-            const str = renderCustomer(obj)
-            document.querySelector('#tblCustomer tbody').innerHTML += str
-
+                    $('#modalCreate').modal('hide')
+                })
+                .fail((error) => {
+                    console.log(error);
+                })
         })
+
+
+        const handleAddEventShowModalUpdate = () => {
+            $('.edit').on('click', function () {
+                customerId = $(this).data('id')
+
+                findByCustomerId(customerId).then((data) => {
+                    assignModalUpdate(data)
+                    $('#modalUpdate').modal('show')
+                })
+                    .catch((error) => {
+                        console.log(error);
+                    })
+            })
+        }
+
+        const handleAddEventConfirmDelete = () => {
+            $('.delete').on('click', function () {
+                customerId = $(this).data('id')
+
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: "You won't be able to revert this!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Yes, delete it!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        doDelete(customerId).then(() => {
+                            $('#tr_' + customerId).remove()
+
+                            Swal.fire({
+                                position: 'top-end',
+                                icon: 'success',
+                                title: 'The customer has been deleted.',
+                                showConfirmButton: false,
+                                timer: 2500
+                            })
+                        })
+                            .catch((error) => {
+                                console.log(error);
+                            })
+                    }
+                })
+            })
+        }
+
+        const doDelete = (id) => {
+            const obj = {
+                deleted: true
+            }
+
+            return $.ajax({
+                headers: {
+                    'accept': 'application/json',
+                    'content-type': 'application/json'
+                },
+                type: 'PATCH',
+                url: 'http://localhost:3300/customers/' + id,
+                data: JSON.stringify(obj)
+            })
+        }
+
+        const assignModalUpdate = (data) => {
+            $('#fullNameUp').val(data.fullName)
+            $('#emailUp').val(data.email)
+            $('#phoneUp').val(data.phone)
+            $('#addressUp').val(data.address)
+        }
+
+        const findByCustomerId = (id) => {
+            return $.ajax({
+                url: 'http://localhost:3300/customers/' + id
+            })
+        }
+
+
+        $('#btnUpdate').on('click', () => {
+            let fullName = $('#fullNameUp').val()
+            let email = $('#emailUp').val()
+            let phone = $('#phoneUp').val()
+            let address = $('#addressUp').val()
+
+            const obj = {
+                fullName,
+                email,
+                phone,
+                address
+            }
+
+            doUpdate(obj)
+        })
+
+        const doUpdate = (obj) => {
+            $.ajax({
+                headers: {
+                    'accept': 'application/json',
+                    'content-type': 'application/json'
+                },
+                type: 'PATCH',
+                url: 'http://localhost:3300/customers/' + customerId,
+                data: JSON.stringify(obj)
+            })
+                .done((data) => {
+                    const str = renderCustomer(data)
+                    $('#tr_' + customerId).replaceWith(str)
+                    $('#modalUpdate').modal('hide')
+                })
+                .fail((error) => {
+                    console.log(error);
+                })
+        }
+
+
+
+        // const btnCreate = document.getElementById('btnCreate')
+        // btnCreate.addEventListener('click', () => {
+        //     const fullName = document.getElementById('fullNameCre').value
+        //     const email = document.getElementById('emailCre').value
+        //     const phone = document.getElementById('phoneCre').value
+        //     const address = document.getElementById('addressCre').value
+        //     const balance = 0
+
+        //     const obj = {
+        //         id: id++,
+        //         fullName: fullName,
+        //         email: email,
+        //         phone: phone,
+        //         balance: balance,
+        //         address: address
+        //     }
+
+        //     customers.push(obj)
+
+        //     const str = renderCustomer(obj)
+        //     document.querySelector('#tblCustomer tbody').innerHTML += str
+
+        // })
 
     </script>
 </body>
